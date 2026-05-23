@@ -130,6 +130,7 @@
   <span class="tag">本地处理 · 不上传 · 保护隐私</span>
   <div class="spacer"></div>
   <button class="btn ghost" id="helpBtn" style="width:auto">❓ 使用说明</button>
+  <button class="btn ghost" id="shareBtn" style="width:auto">📱 分享</button>
   <button class="btn ghost" id="compareBtn" style="width:auto" disabled>👁 按住看原图</button>
   <button class="btn ghost" id="newBtn" style="width:auto" disabled>📂 换图片</button>
 </header>
@@ -247,6 +248,28 @@
 
       <h3>④ 效果说明</h3>
       <p class="note">智能修复用的是「调和扩散」算法：背景越平整/规则，还原越自然；若水印压在复杂纹理上，纯算法会有点糊，这时改用<b>仿制图章</b>从相邻相似区域复制覆盖通常更好。</p>
+    </div>
+  </div>
+</div>
+
+<!-- 分享弹窗 -->
+<div class="modal" id="shareModal">
+  <div class="modal-box" style="max-width:400px;">
+    <div class="modal-head">
+      <h2>📱 分享此工具</h2>
+      <button class="modal-close" id="shareClose" title="关闭">×</button>
+    </div>
+    <div class="modal-body" style="text-align:center;">
+      <p style="color:var(--muted); font-size:13px; margin-top:0;">手机扫码即可打开使用，无需下载</p>
+      <img src="qrcode.png" alt="二维码" style="width:220px; height:220px; background:#fff; padding:10px; border-radius:12px; image-rendering:pixelated;">
+      <div style="display:flex; gap:8px; margin-top:18px;">
+        <input id="shareUrl" readonly value="https://pamelaaaaa1218.github.io/watermark-remover/"
+          style="flex:1; background:var(--panel-2); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 11px; font-size:12px;">
+        <button class="btn" id="copyUrl" style="width:auto; padding:9px 14px;">复制</button>
+      </div>
+      <p style="color:var(--muted); font-size:12px; margin-top:16px; line-height:1.6;">
+        把链接或二维码发给同事，对方在浏览器点开即用；<br>所有图片仍在各自浏览器本地处理，不会上传。
+      </p>
     </div>
   </div>
 </div>
@@ -807,7 +830,19 @@
   document.getElementById('helpBtn').onclick=openHelp;
   document.getElementById('helpClose').onclick=closeHelp;
   helpModal.addEventListener('click',e=>{ if(e.target===helpModal) closeHelp(); });
-  window.addEventListener('keydown',e=>{ if(e.key==='Escape') closeHelp(); });
+
+  // ---------- share modal ----------
+  const shareModal=document.getElementById('shareModal');
+  const closeShare=()=>shareModal.classList.remove('show');
+  document.getElementById('shareBtn').onclick=()=>shareModal.classList.add('show');
+  document.getElementById('shareClose').onclick=closeShare;
+  shareModal.addEventListener('click',e=>{ if(e.target===shareModal) closeShare(); });
+  document.getElementById('copyUrl').onclick=()=>{
+    const u=document.getElementById('shareUrl');
+    navigator.clipboard?.writeText(u.value).then(()=>toast('链接已复制')).catch(()=>{ u.select(); document.execCommand('copy'); toast('链接已复制'); });
+  };
+
+  window.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeHelp(); closeShare(); } });
 
   // init
   renderOptions();
