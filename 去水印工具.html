@@ -29,7 +29,7 @@
     overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:18px;
   }
   .stage{
-    flex:1; min-width:0; display:flex; align-items:center; justify-content:center;
+    flex:1; min-width:0; display:flex; align-items:safe center; justify-content:safe center;
     background:
       linear-gradient(45deg,#1a1d24 25%,transparent 25%),
       linear-gradient(-45deg,#1a1d24 25%,transparent 25%),
@@ -38,9 +38,28 @@
     background-size:24px 24px; background-position:0 0,0 12px,12px -12px,-12px 0;
     background-color:#13161c; overflow:auto; padding:24px; position:relative;
   }
-  .canvas-wrap{position:relative; line-height:0; box-shadow:0 8px 40px rgba(0,0,0,.5); max-width:100%;}
-  .canvas-wrap canvas{display:block; max-width:100%; height:auto; touch-action:none;}
+  .stage.panning{cursor:grabbing;}
+  .stage.pan-mode{cursor:grab;}
+  .canvas-wrap{position:relative; line-height:0; box-shadow:0 8px 40px rgba(0,0,0,.5); flex-shrink:0;}
+  .canvas-wrap canvas{display:block; width:100%; height:100%; touch-action:none;}
   #overlay{position:absolute; top:0; left:0; pointer-events:none;}
+  .zoom-bar{
+    position:absolute; bottom:16px; right:16px; display:none; gap:2px;
+    background:rgba(23,26,33,0.92); border:1px solid var(--border); border-radius:10px;
+    padding:4px; backdrop-filter:blur(8px); z-index:15; align-items:center;
+    box-shadow:0 6px 20px rgba(0,0,0,.4);
+  }
+  .zoom-bar.show{display:flex;}
+  .zoom-bar button{
+    background:transparent; border:none; color:var(--text); padding:6px 11px; cursor:pointer;
+    border-radius:6px; font-size:14px; line-height:1; font-family:inherit;
+  }
+  .zoom-bar button:hover{background:var(--panel-2);}
+  .zoom-bar .zoom-label{
+    min-width:54px; text-align:center; color:var(--muted); font-size:12px; padding:0 6px;
+    font-variant-numeric:tabular-nums; user-select:none;
+  }
+  .zoom-bar .sep{width:1px; height:18px; background:var(--border); margin:0 2px;}
   .drop-hint{
     text-align:center; color:var(--muted); border:2px dashed var(--border); border-radius:16px;
     padding:60px 50px; max-width:520px; transition:.2s;
@@ -187,6 +206,8 @@
     <p class="footnote">
       操作提示：选择方式后在图片上涂抹处理。<br>
       仿制图章：按住 <kbd>Alt</kbd> 点击设置取样点。<br>
+      缩放：右下角按钮、<kbd>Ctrl</kbd>+滚轮 或 <kbd>+</kbd>/<kbd>-</kbd>；<kbd>Ctrl</kbd>+<kbd>0</kbd> 适应。<br>
+      平移：按住<kbd>空格</kbd>拖拽，或中键拖拽。<br>
       快捷键：<kbd>Ctrl</kbd>+<kbd>Z</kbd> 撤销 · <kbd>Ctrl</kbd>+<kbd>V</kbd> 粘贴图片。
     </p>
   </aside>
@@ -203,6 +224,14 @@
       <canvas id="canvas"></canvas>
       <canvas id="overlay"></canvas>
       <div class="busy" id="busy"><div class="spinner"></div><div id="busyText">处理中…</div></div>
+    </div>
+    <div class="zoom-bar" id="zoomBar">
+      <button id="zoomOutBtn" title="缩小 (Ctrl/⌘+滚轮)">−</button>
+      <span class="zoom-label" id="zoomLabel">100%</span>
+      <button id="zoomInBtn" title="放大 (Ctrl/⌘+滚轮)">+</button>
+      <div class="sep"></div>
+      <button id="zoomFitBtn" title="适应屏幕">适应</button>
+      <button id="zoom100Btn" title="原始大小 1:1">1:1</button>
     </div>
   </div>
 </div>
@@ -239,6 +268,8 @@
 
       <h3>③ 实用技巧</h3>
       <ul>
+        <li><b>缩放查看细节</b>：用右下角缩放栏，或 <kbd>Ctrl</kbd>+滚轮在光标位置缩放。图大、水印小看不清时尤其有用，<kbd>Ctrl</kbd>+<kbd>0</kbd> 一键适应屏幕。</li>
+        <li><b>平移画面</b>：放大后按住 <kbd>空格</kbd>拖拽（或鼠标中键拖拽）移动画面。</li>
         <li><b>画笔大小</b>：拖滑块，或用 <kbd>[</kbd> / <kbd>]</kbd> 快速增减。</li>
         <li><b>智能修复</b>涂抹要盖住水印的<b>全部边缘</b>，可适当多涂一点；「边缘扩展」参数能自动外扩覆盖锯齿。</li>
         <li><b>撤销/重做</b>：<kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>，或点左侧按钮。</li>
@@ -292,6 +323,8 @@
   const busyText=document.getElementById('busyText');
   const brushRange=document.getElementById('brushSize');
   const brushVal=document.getElementById('brushVal');
+  const zoomBar=document.getElementById('zoomBar');
+  const zoomLabel=document.getElementById('zoomLabel');
 
   // offscreen mask canvas (for inpaint selection)
   const maskCanvas=document.createElement('canvas');
@@ -316,6 +349,11 @@
   let rectStart=null;
   // options values
   let opt={ mosaicBlock:14, blurRadius:8, solidColor:'#ffffff', inpaintRadius:2, inpaintQuality:80 };
+  // zoom & pan
+  let zoomLevel=1.0;              // 1.0 = 适应屏幕
+  let fitBaseW=0, fitBaseH=0;     // 适应屏幕时的 CSS 像素大小
+  let panMode=false;              // 空格按住进入平移模式
+  let panning=false, panStartX=0, panStartY=0, panScrollL=0, panScrollT=0;
 
   // ---------- helpers ----------
   function toast(msg){
@@ -325,6 +363,52 @@
   function showBusy(t){ busyText.textContent=t||'处理中…'; busy.classList.add('show'); }
   function hideBusy(){ busy.classList.remove('show'); }
   const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
+
+  // ---------- zoom & pan ----------
+  function computeFitSize(){
+    // 让图片适应 stage 的可视区，留 24px padding × 2
+    const sw=Math.max(50, stage.clientWidth-48);
+    const sh=Math.max(50, stage.clientHeight-48);
+    if(!cw||!ch){ fitBaseW=sw; fitBaseH=sh; return; }
+    const s=Math.min(sw/cw, sh/ch);
+    fitBaseW=Math.max(1,Math.round(cw*s));
+    fitBaseH=Math.max(1,Math.round(ch*s));
+  }
+  function applyZoom(){
+    if(!cw||!ch) return;
+    const w=Math.round(fitBaseW*zoomLevel);
+    const h=Math.round(fitBaseH*zoomLevel);
+    canvasWrap.style.width=w+'px';
+    canvasWrap.style.height=h+'px';
+    const pct=Math.round((w/cw)*100);
+    zoomLabel.textContent=pct+'%';
+  }
+  function setZoom(newZoom, focusClientX, focusClientY){
+    newZoom=Math.max(0.1, Math.min(16, newZoom));
+    // 计算缩放前光标在 canvasWrap 内的相对位置（保持其在缩放后仍贴在光标下）
+    let fracX=0.5, fracY=0.5;
+    if(focusClientX!=null){
+      const r=canvasWrap.getBoundingClientRect();
+      if(r.width>0&&r.height>0){
+        fracX=clamp((focusClientX-r.left)/r.width, 0, 1);
+        fracY=clamp((focusClientY-r.top)/r.height, 0, 1);
+      }
+    }
+    zoomLevel=newZoom;
+    applyZoom();
+    if(focusClientX!=null){
+      // 调整 stage 滚动，使光标依然指向原图同一点
+      const nr=canvasWrap.getBoundingClientRect();
+      const targetWrapX=fracX*nr.width;
+      const targetWrapY=fracY*nr.height;
+      const curCursorInWrapX=focusClientX-nr.left;
+      const curCursorInWrapY=focusClientY-nr.top;
+      stage.scrollLeft += (targetWrapX-curCursorInWrapX);
+      stage.scrollTop  += (targetWrapY-curCursorInWrapY);
+    }
+  }
+  function zoomFit(){ computeFitSize(); zoomLevel=1.0; applyZoom(); }
+  function zoom100(){ if(!cw) return; computeFitSize(); zoomLevel=cw/fitBaseW; applyZoom(); }
 
   // ---------- load image ----------
   function loadImageFromSrc(src){
@@ -347,6 +431,8 @@
       octx.clearRect(0,0,w,h);
       dropHint.style.display='none';
       canvasWrap.style.display='block';
+      zoomBar.classList.add('show');
+      zoomFit();
       enableControls(true);
       updateHistoryButtons();
       toast(scaled?`图片较大，已缩放至 ${w}×${h} 以保证流畅`:`已载入 ${w}×${h}`);
@@ -998,6 +1084,65 @@
   };
 
   window.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeHelp(); closeShare(); } });
+
+  // ---------- zoom & pan wiring ----------
+  document.getElementById('zoomInBtn').onclick=()=>{ if(!cw) return; setZoom(zoomLevel*1.25); };
+  document.getElementById('zoomOutBtn').onclick=()=>{ if(!cw) return; setZoom(zoomLevel/1.25); };
+  document.getElementById('zoomFitBtn').onclick=()=>{ if(!cw) return; zoomFit(); };
+  document.getElementById('zoom100Btn').onclick=()=>{ if(!cw) return; zoom100(); };
+
+  // Ctrl/⌘ + 滚轮 在光标位置缩放
+  stage.addEventListener('wheel', e=>{
+    if(!cw) return;
+    if(!(e.ctrlKey||e.metaKey)) return;
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.15 : 1/1.15;
+    setZoom(zoomLevel*factor, e.clientX, e.clientY);
+  }, {passive:false});
+
+  // 空格按住进入平移模式；释放后退出
+  window.addEventListener('keydown', e=>{
+    const tag=document.activeElement?.tagName;
+    if(e.key===' '&&!panMode&&!e.repeat&&tag!=='INPUT'&&tag!=='TEXTAREA'){
+      panMode=true; stage.classList.add('pan-mode'); e.preventDefault();
+    }
+    else if(e.key==='='||e.key==='+'){ if(cw){ e.preventDefault(); setZoom(zoomLevel*1.25); } }
+    else if(e.key==='-'||e.key==='_'){ if(cw){ e.preventDefault(); setZoom(zoomLevel/1.25); } }
+    else if((e.ctrlKey||e.metaKey)&&e.key==='0'){ if(cw){ e.preventDefault(); zoomFit(); } }
+  });
+  window.addEventListener('keyup', e=>{
+    if(e.key===' '){ panMode=false; panning=false; stage.classList.remove('pan-mode'); stage.classList.remove('panning'); }
+  });
+
+  // 空格+拖拽 或 中键拖拽 → 平移
+  stage.addEventListener('pointerdown', e=>{
+    if(!cw) return;
+    if(panMode||e.button===1){
+      panning=true; panStartX=e.clientX; panStartY=e.clientY;
+      panScrollL=stage.scrollLeft; panScrollT=stage.scrollTop;
+      stage.classList.add('panning');
+      stage.setPointerCapture?.(e.pointerId);
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+  stage.addEventListener('pointermove', e=>{
+    if(!panning) return;
+    stage.scrollLeft=panScrollL-(e.clientX-panStartX);
+    stage.scrollTop =panScrollT-(e.clientY-panStartY);
+    e.preventDefault(); e.stopPropagation();
+  }, true);
+  stage.addEventListener('pointerup', e=>{
+    if(panning){ panning=false; stage.classList.remove('panning'); e.preventDefault(); e.stopPropagation(); }
+  }, true);
+
+  // 窗口大小变化时重新计算适应尺寸
+  window.addEventListener('resize', ()=>{
+    if(!cw) return;
+    const oldZoom=zoomLevel;
+    computeFitSize();
+    zoomLevel=oldZoom;
+    applyZoom();
+  });
 
   // init
   renderOptions();
