@@ -542,68 +542,45 @@
   }
   function clearMask(){ mctx.clearRect(0,0,cw,ch); renderOverlay(); }
 
-  // ---------- INPAINT algorithm (onion-peel fill + harmonic smoothing) ----------
-  function runInpaint(maskArr){
-    const w=cw,h=ch,N=w*h;
-    const img=ctx.getImageData(0,0,w,h);
-    const data=img.data;
-    // dilate mask to cover anti-aliased edges
-    let mask=maskArr;
-    const dil=opt.inpaintRadius|0;
-    for(let k=0;k<dil;k++) mask=dilate(mask,w,h);
-
-    let count=0; for(let i=0;i<N;i++) if(mask[i]) count++;
-    if(count===0) return false;
-
+  // ---------- INPAINT (patch-based exemplar fill + smoothing) ----------
+  // 先用 onion-peel 给出初始猜测，再跑 PatchMatch 找最相似的纹理样本，
+  // 用 voting 重建并做少量平滑去缝。比纯调和扩散对纹理背景好很多。
+  function onionPeelFill(data, mask, w, h){
+    const N=w*h;
     const filled=new Uint8Array(N);
     for(let i=0;i<N;i++) filled[i]=mask[i]?0:1;
-
-    // BFS onion-peel: propagate boundary colors inward
-    const queue=new Int32Array(count); let qh=0, qt=0;
-    const enq=new Uint8Array(N);
+    const dq=[]; const enq=new Uint8Array(N);
     for(let i=0;i<N;i++){
       if(!mask[i]) continue;
       const x=i%w, y=(i/w)|0;
       let edge=false;
       if(x>0&&filled[i-1])edge=true; else if(x<w-1&&filled[i+1])edge=true;
       else if(y>0&&filled[i-w])edge=true; else if(y<h-1&&filled[i+w])edge=true;
-      if(edge){ queue[qt++]=i; enq[i]=1; }
+      if(edge){ dq.push(i); enq[i]=1; }
     }
-    // grow queue dynamically with a JS array fallback
-    const dq=Array.from(queue.subarray(0,qt));
     let head=0;
     while(head<dq.length){
-      const i=dq[head++];
-      const x=i%w, y=(i/w)|0;
+      const i=dq[head++], x=i%w, y=(i/w)|0;
       let r=0,g=0,b=0,a=0,n=0;
-      // average filled neighbors (8-connected)
-      for(let dyk=-1;dyk<=1;dyk++){
-        for(let dxk=-1;dxk<=1;dxk++){
-          if(dxk===0&&dyk===0) continue;
-          const xx=x+dxk, yy=y+dyk;
-          if(xx<0||yy<0||xx>=w||yy>=h) continue;
-          const j=yy*w+xx;
-          if(filled[j]){ const o=j*4; r+=data[o];g+=data[o+1];b+=data[o+2];a+=data[o+3];n++; }
-        }
+      for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+        if(!dx&&!dy) continue;
+        const xx=x+dx, yy=y+dy;
+        if(xx<0||yy<0||xx>=w||yy>=h) continue;
+        const j=yy*w+xx;
+        if(filled[j]){ const o=j*4; r+=data[o];g+=data[o+1];b+=data[o+2];a+=data[o+3];n++; }
       }
-      if(n>0){ const o=i*4; data[o]=r/n; data[o+1]=g/n; data[o+2]=b/n; data[o+3]=a/n; filled[i]=1; }
-      // enqueue unfilled masked neighbors
-      for(let dyk=-1;dyk<=1;dyk++){
-        for(let dxk=-1;dxk<=1;dxk++){
-          if(dxk===0&&dyk===0) continue;
-          const xx=x+dxk, yy=y+dyk;
-          if(xx<0||yy<0||xx>=w||yy>=h) continue;
-          const j=yy*w+xx;
-          if(mask[j]&&!filled[j]&&!enq[j]){ enq[j]=1; dq.push(j); }
-        }
+      if(n>0){ const o=i*4; data[o]=r/n;data[o+1]=g/n;data[o+2]=b/n;data[o+3]=a/n; filled[i]=1; }
+      for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+        if(!dx&&!dy) continue;
+        const xx=x+dx, yy=y+dy;
+        if(xx<0||yy<0||xx>=w||yy>=h) continue;
+        const j=yy*w+xx;
+        if(mask[j]&&!filled[j]&&!enq[j]){ enq[j]=1; dq.push(j); }
       }
     }
+  }
 
-    // Harmonic smoothing (Jacobi iterations) over masked pixels for natural blending
-    const iters=Math.round(20+opt.inpaintQuality*1.2);
-    // collect masked indices
-    const idx=new Int32Array(count); let ci=0;
-    for(let i=0;i<N;i++) if(mask[i]) idx[ci++]=i;
+  function harmonicSmooth(data, idx, count, w, h, iters){
     const buf=new Float32Array(count*4);
     for(let it=0;it<iters;it++){
       for(let k=0;k<count;k++){
@@ -613,10 +590,188 @@
         if(x<w-1){const o=(i+1)*4;r+=data[o];g+=data[o+1];b+=data[o+2];a+=data[o+3];n++;}
         if(y>0){const o=(i-w)*4;r+=data[o];g+=data[o+1];b+=data[o+2];a+=data[o+3];n++;}
         if(y<h-1){const o=(i+w)*4;r+=data[o];g+=data[o+1];b+=data[o+2];a+=data[o+3];n++;}
-        const b4=k*4; buf[b4]=r/n; buf[b4+1]=g/n; buf[b4+2]=b/n; buf[b4+3]=a/n;
+        const b4=k*4; buf[b4]=r/n;buf[b4+1]=g/n;buf[b4+2]=b/n;buf[b4+3]=a/n;
       }
-      for(let k=0;k<count;k++){ const o=idx[k]*4,b4=k*4; data[o]=buf[b4];data[o+1]=buf[b4+1];data[o+2]=buf[b4+2];data[o+3]=buf[b4+3]; }
+      for(let k=0;k<count;k++){
+        const o=idx[k]*4, b4=k*4;
+        data[o]=buf[b4];data[o+1]=buf[b4+1];data[o+2]=buf[b4+2];data[o+3]=buf[b4+3];
+      }
     }
+  }
+
+  function runInpaint(maskArr){
+    const w=cw, h=ch, N=w*h;
+    const img=ctx.getImageData(0,0,w,h);
+    const data=img.data;
+
+    // dilate to cover anti-aliased edges
+    let mask=maskArr;
+    const dil=opt.inpaintRadius|0;
+    for(let k=0;k<dil;k++) mask=dilate(mask,w,h);
+
+    let count=0; for(let i=0;i<N;i++) if(mask[i]) count++;
+    if(count===0) return false;
+
+    // 收集 masked 索引
+    const idx=new Int32Array(count);
+    const nnfOf=new Int32Array(N).fill(-1);
+    let ci=0;
+    for(let i=0;i<N;i++) if(mask[i]){ idx[ci]=i; nnfOf[i]=ci; ci++; }
+
+    // 初始猜测：onion-peel
+    onionPeelFill(data, mask, w, h);
+
+    // 如果源区域太少 / 图太大 / 区域太小：直接走调和平滑
+    const unmaskedRatio = 1 - count/N;
+    const tooBig = N > 6_000_000;       // ~2400×2500 起，PatchMatch 内存吃紧
+    const tooSmall = count < 80;
+    if (unmaskedRatio < 0.2 || tooBig || tooSmall) {
+      const iters=Math.round(20+opt.inpaintQuality*1.2);
+      harmonicSmooth(data, idx, count, w, h, iters);
+      ctx.putImageData(img,0,0);
+      return true;
+    }
+
+    // ===== PatchMatch =====
+    const PATCH=5, HALF=2;
+    const ITERS=Math.max(2, Math.min(6, Math.round(opt.inpaintQuality/25)));
+
+    // mask 的积分图，便于 O(1) 判断"5×5 全在干净区"
+    const W2=w+1;
+    const cum=new Int32Array((w+1)*(h+1));
+    for(let y=0;y<h;y++){
+      let rowSum=0;
+      for(let x=0;x<w;x++){
+        rowSum += mask[y*w+x]?1:0;
+        cum[(y+1)*W2 + (x+1)] = cum[y*W2 + (x+1)] + rowSum;
+      }
+    }
+    function isSrcValid(sx, sy){
+      if(sx<HALF || sy<HALF || sx>=w-HALF || sy>=h-HALF) return false;
+      const x0=sx-HALF, y0=sy-HALF, x1=sx+HALF+1, y1=sy+HALF+1;
+      return (cum[y1*W2+x1] - cum[y0*W2+x1] - cum[y1*W2+x0] + cum[y0*W2+x0]) === 0;
+    }
+
+    // 随机初始化 NNF（每个 masked 点指向一个合法源 patch 中心）
+    const nnf=new Int32Array(count);
+    for(let k=0;k<count;k++){
+      let s=-1;
+      for(let t=0;t<25;t++){
+        const sx=HALF + ((Math.random()*(w-PATCH))|0);
+        const sy=HALF + ((Math.random()*(h-PATCH))|0);
+        if(isSrcValid(sx,sy)){ s=sy*w+sx; break; }
+      }
+      if(s<0){ // 兜底扫描（罕见）
+        outer: for(let sy=HALF;sy<h-HALF;sy++)
+          for(let sx=HALF;sx<w-HALF;sx++)
+            if(isSrcValid(sx,sy)){ s=sy*w+sx; break outer; }
+      }
+      nnf[k] = s<0 ? 0 : s;
+    }
+
+    // patch SSD，带 early-exit
+    function patchDist(tx, ty, sx, sy, bestD){
+      let sum=0;
+      for(let dy=-HALF; dy<=HALF; dy++){
+        const ty2=ty+dy; if(ty2<0||ty2>=h) continue;
+        const sy2=sy+dy;
+        for(let dx=-HALF; dx<=HALF; dx++){
+          const tx2=tx+dx; if(tx2<0||tx2>=w) continue;
+          const sx2=sx+dx;
+          const ti=(ty2*w+tx2)*4, si=(sy2*w+sx2)*4;
+          const dr=data[ti]-data[si];
+          const dg=data[ti+1]-data[si+1];
+          const db=data[ti+2]-data[si+2];
+          sum += dr*dr + dg*dg + db*db;
+          if(sum>=bestD) return sum;
+        }
+      }
+      return sum;
+    }
+
+    const maxR = Math.max(w,h);
+    for(let iter=0; iter<ITERS; iter++){
+      const forward = (iter&1)===0;
+      const start = forward?0:count-1, stop=forward?count:-1, step=forward?1:-1;
+      const off = forward?-1:1; // 邻居方向
+      for(let k=start; k!==stop; k+=step){
+        const ti=idx[k], tx=ti%w, ty=(ti/w)|0;
+        let bestS=nnf[k];
+        let bestSx=bestS%w, bestSy=(bestS/w)|0;
+        let bestD=patchDist(tx,ty,bestSx,bestSy,Infinity);
+
+        // 横向传播
+        if(tx+off>=0 && tx+off<w){
+          const nk = nnfOf[ty*w+(tx+off)];
+          if(nk>=0){
+            const ns=nnf[nk];
+            const sx=(ns%w) - off;        // 把邻居的源平移过来
+            const sy=(ns/w)|0;
+            if(isSrcValid(sx,sy)){
+              const d=patchDist(tx,ty,sx,sy,bestD);
+              if(d<bestD){ bestD=d; bestS=sy*w+sx; bestSx=sx; bestSy=sy; }
+            }
+          }
+        }
+        // 纵向传播
+        if(ty+off>=0 && ty+off<h){
+          const nk = nnfOf[(ty+off)*w+tx];
+          if(nk>=0){
+            const ns=nnf[nk];
+            const sx=ns%w;
+            const sy=((ns/w)|0) - off;
+            if(isSrcValid(sx,sy)){
+              const d=patchDist(tx,ty,sx,sy,bestD);
+              if(d<bestD){ bestD=d; bestS=sy*w+sx; bestSx=sx; bestSy=sy; }
+            }
+          }
+        }
+        // 随机搜索，半径指数衰减
+        let r=maxR;
+        while(r>1){
+          const rx=(Math.random()*2-1)*r;
+          const ry=(Math.random()*2-1)*r;
+          const sx=Math.max(HALF, Math.min(w-1-HALF, (bestSx+rx)|0));
+          const sy=Math.max(HALF, Math.min(h-1-HALF, (bestSy+ry)|0));
+          if(isSrcValid(sx,sy)){
+            const d=patchDist(tx,ty,sx,sy,bestD);
+            if(d<bestD){ bestD=d; bestS=sy*w+sx; bestSx=sx; bestSy=sy; }
+          }
+          r = (r/2)|0;
+        }
+        nnf[k]=bestS;
+      }
+    }
+
+    // Voting 重建：每个 masked 像素 = 所有"包含它的 patch 中心"对应源像素的平均
+    const acc=new Float32Array(count*3);
+    const accN=new Int32Array(count);
+    for(let k=0;k<count;k++){
+      const ti=idx[k], tx=ti%w, ty=(ti/w)|0;
+      const ns=nnf[k], sx=ns%w, sy=(ns/w)|0;
+      for(let dy=-HALF; dy<=HALF; dy++){
+        const ty2=ty+dy; if(ty2<0||ty2>=h) continue;
+        const sy2=sy+dy;
+        for(let dx=-HALF; dx<=HALF; dx++){
+          const tx2=tx+dx; if(tx2<0||tx2>=w) continue;
+          const k2=nnfOf[ty2*w+tx2]; if(k2<0) continue;
+          const si=(sy2*w+(sx+dx))*4;
+          const a=k2*3;
+          acc[a] += data[si]; acc[a+1] += data[si+1]; acc[a+2] += data[si+2];
+          accN[k2]++;
+        }
+      }
+    }
+    for(let k=0;k<count;k++){
+      if(accN[k]>0){
+        const o=idx[k]*4, a=k*3, n=accN[k];
+        data[o]=acc[a]/n; data[o+1]=acc[a+1]/n; data[o+2]=acc[a+2]/n; data[o+3]=255;
+      }
+    }
+
+    // 轻度平滑：消掉 patch 拼接的细微缝
+    harmonicSmooth(data, idx, count, w, h, 6);
+
     ctx.putImageData(img,0,0);
     return true;
   }
@@ -724,7 +879,7 @@
   // ---------- tools / options UI ----------
   const toolOptions={
     inpaint:()=>`
-      <div class="hint">用画笔涂红要去除的水印，然后点击下方按钮自动还原背景。适合：透明 LOGO、文字水印、规则背景。</div>
+      <div class="hint">用画笔涂红要去除的水印，再点「执行修复」。算法会从图片其他干净区域取相似纹理来补。<br><b>背景越复杂（人脸、复杂花纹），结果越可能不完美</b>——这时可改用「仿制图章」手动从干净区域取样覆盖，效果通常更好。</div>
       <div class="field"><label>边缘扩展 <span class="val">${opt.inpaintRadius} px</span></label>
         <input type="range" min="0" max="6" value="${opt.inpaintRadius}" data-opt="inpaintRadius"></div>
       <div class="field"><label>修复质量 <span class="val">${opt.inpaintQuality}</span></label>
