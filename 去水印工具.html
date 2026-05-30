@@ -139,7 +139,24 @@
   .modal-body .tool-row .tc{font-size:13px; color:var(--muted); line-height:1.65;}
   @media (max-width:780px){
     .main{flex-direction:column;}
-    .sidebar{width:100%; max-height:46%; border-right:none; border-bottom:1px solid var(--border);}
+    .sidebar{width:100%; max-height:46%; border-right:none; border-bottom:1px solid var(--border); padding:14px; gap:14px;}
+
+    /* 顶部栏：标题/标签在上，4 个操作按钮自动换行平铺成 2×2 大方块，便于触屏点击 */
+    header{padding:10px 14px; gap:8px; flex-wrap:wrap;}
+    header h1{font-size:16px;}
+    header .tag{font-size:11px; padding:3px 8px;}
+    header .btn{flex:1 1 40%; width:auto; min-width:0; padding:10px 6px; font-size:13px; white-space:nowrap;}
+
+    .stage{padding:14px;}
+    .drop-hint{padding:42px 26px;}
+    .drop-hint .big{font-size:40px;}
+  }
+  @media (max-width:460px){
+    header h1{font-size:15px; letter-spacing:0;}
+    header .tag{font-size:10.5px; padding:2px 7px;}
+    header .btn{font-size:12.5px; padding:10px 4px; gap:4px;}
+    .tool-btn{padding:10px 4px;}
+    .tool-btn .ic{font-size:19px;}
   }
 </style>
 </head>
