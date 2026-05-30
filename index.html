@@ -115,6 +115,13 @@
   .spinner{width:38px; height:38px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
   .footnote{font-size:11px; color:var(--muted); line-height:1.6; margin-top:auto;}
+  .site-footer{
+    flex-shrink:0; text-align:center; font-size:11.5px; color:var(--muted);
+    background:var(--panel); border-top:1px solid var(--border);
+    padding:8px 16px; line-height:1.6;
+  }
+  .site-footer b{color:var(--text); font-weight:600;}
+  .site-footer .sep{margin:0 8px; opacity:.5;}
   kbd{background:var(--panel-2); border:1px solid var(--border); border-bottom-width:2px; border-radius:5px; padding:1px 6px; font-size:11px; font-family:inherit;}
   ::-webkit-scrollbar{width:10px; height:10px;}
   ::-webkit-scrollbar-thumb{background:#2c313c; border-radius:5px;}
@@ -150,6 +157,8 @@
     .stage{padding:14px;}
     .drop-hint{padding:42px 26px;}
     .drop-hint .big{font-size:40px;}
+    .site-footer{font-size:10.5px; padding:7px 12px;}
+    .site-footer .sep{margin:0 5px;}
   }
   @media (max-width:460px){
     header h1{font-size:15px; letter-spacing:0;}
@@ -252,6 +261,10 @@
     </div>
   </div>
 </div>
+
+<footer class="site-footer">
+  本工具由「<b>Pamela 的 AI 笔记</b>」开发<span class="sep">·</span>© 2026 版权所有，保留所有权利<span class="sep">·</span>所有图片均在本地处理，不上传服务器
+</footer>
 
 <input type="file" id="fileInput" accept="image/*" style="display:none;">
 <div class="toast" id="toast"></div>
