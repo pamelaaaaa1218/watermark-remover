@@ -85,6 +85,11 @@
   .field label .val{color:var(--accent); font-variant-numeric:tabular-nums;}
   input[type=range]{width:100%; accent-color:var(--accent);}
   input[type=color]{width:100%; height:34px; padding:0; border:1px solid var(--border); border-radius:8px; background:var(--panel-2); cursor:pointer;}
+  input[type=number]{
+    width:100%; min-width:0; height:36px; padding:0 9px; color:var(--text); background:var(--panel);
+    border:1px solid var(--border); border-radius:8px; font:inherit; font-size:12px; outline:none;
+  }
+  input[type=number]:focus{border-color:var(--accent);}
   .btn{
     border:1px solid var(--border); background:var(--panel-2); color:var(--text); padding:10px 12px;
     border-radius:9px; cursor:pointer; font-size:13px; transition:.15s; display:inline-flex;
@@ -103,6 +108,10 @@
   .seg-btn{flex:1; padding:9px 6px; background:var(--panel); border:1px solid var(--border); border-radius:9px; color:var(--muted); cursor:pointer; font-size:13px; font-family:inherit; transition:.15s;}
   .seg-btn:hover{border-color:var(--accent-2);}
   .seg-btn.active{border-color:var(--accent); background:rgba(79,140,255,.16); color:#fff; font-weight:600;}
+  .crop-presets{display:grid; grid-template-columns:repeat(3,1fr); gap:6px;}
+  .crop-size-row{display:grid; grid-template-columns:1fr auto 1fr; gap:7px; align-items:center;}
+  .crop-size-row span{color:var(--muted); font-size:12px;}
+  .crop-status{font-size:12px; color:var(--accent); text-align:center; font-variant-numeric:tabular-nums;}
   .divider{height:1px; background:var(--border); margin:2px 0;}
   .toast{
     position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px);
@@ -213,10 +222,14 @@
           <span class="ic">⬚</span><span>矩形修复</span>
           <span class="desc">框选区域修复</span>
         </button>
+        <button class="tool-btn" data-tool="crop">
+          <span class="ic">✂️</span><span>裁剪</span>
+          <span class="desc">常用比例或自定义</span>
+        </button>
       </div>
     </div>
 
-    <div class="field">
+    <div class="field" id="brushField">
       <label>画笔大小 <span class="val" id="brushVal">28 px</span></label>
       <input type="range" id="brushSize" min="4" max="160" value="28">
     </div>
@@ -299,6 +312,7 @@
       <div class="tool-row"><div class="ti">🟫</div><div class="tc"><b>马赛克</b> —— 涂抹处变成像素块遮盖。不需要还原、只想盖住时用。</div></div>
       <div class="tool-row"><div class="ti">💧</div><div class="tc"><b>模糊</b> —— 涂抹处柔化遮盖，比马赛克自然。支持两种方式：<b>「涂抹」</b>用画笔逐处糊；<b>「框选」</b>拖拽一个矩形，松手后整块一次性模糊，<b>大片要打码的区域用框选更快</b>。</div></div>
       <div class="tool-row"><div class="ti">🎨</div><div class="tc"><b>纯色涂抹</b> —— 用选定的单一颜色直接盖掉。</div></div>
+      <div class="tool-row"><div class="ti">✂️</div><div class="tc"><b>裁剪</b> —— 可选自由、1:1、4:3、3:4、16:9、9:16 常用比例，也可以直接拖拽自定义选区，或输入精确的像素宽高。选区可以移动，并可拖动四角继续调整。</div></div>
 
       <h3>③ 实用技巧</h3>
       <ul>
@@ -357,6 +371,7 @@
   const busyText=document.getElementById('busyText');
   const brushRange=document.getElementById('brushSize');
   const brushVal=document.getElementById('brushVal');
+  const brushField=document.getElementById('brushField');
   const zoomBar=document.getElementById('zoomBar');
   const zoomLabel=document.getElementById('zoomLabel');
 
@@ -382,6 +397,12 @@
   // rect tool
   let rectStart=null;
   let blurMode='brush';            // 模糊工具：'brush' 涂抹 | 'rect' 框选
+  // crop tool
+  let cropSelection=null;          // {x,y,w,h} in image pixels
+  let cropRatio=0;                 // 0 = free, otherwise width / height
+  let cropDragMode=null;           // new | move | nw | ne | sw | se
+  let cropDragStart=null;
+  let cropDragOrigin=null;
   // options values
   let opt={ mosaicBlock:14, blurRadius:8, solidColor:'#ffffff', inpaintRadius:2, inpaintQuality:80 };
   // zoom & pan
@@ -460,6 +481,7 @@
       ctx.clearRect(0,0,w,h);
       ctx.drawImage(img,0,0,w,h);
       originalData=ctx.getImageData(0,0,w,h);
+      cropSelection=null;
       history=[]; redoStack=[];
       pushHistory();
       mctx.clearRect(0,0,w,h);
@@ -470,6 +492,10 @@
       zoomFit();
       enableControls(true);
       updateHistoryButtons();
+      if(currentTool==='crop'){
+        if(cropRatio>0) setCenteredCrop(cropRatio);
+        renderOptions(); renderOverlay();
+      }
       toast(scaled?`图片较大，已缩放至 ${w}×${h} 以保证流畅`:`已载入 ${w}×${h}`);
     };
     img.onerror=()=>toast('图片载入失败，请换一张试试');
@@ -491,7 +517,25 @@
       updateHistoryButtons();
     }catch(e){ console.error(e); }
   }
-  function restore(data){ ctx.putImageData(data,0,0); }
+  function putImageState(data, fitOnResize){
+    const sizeChanged=cw!==data.width||ch!==data.height;
+    if(sizeChanged){
+      cw=data.width; ch=data.height;
+      canvas.width=cw; canvas.height=ch;
+      overlay.width=cw; overlay.height=ch;
+      maskCanvas.width=cw; maskCanvas.height=ch;
+    }
+    ctx.putImageData(data,0,0);
+    if(sizeChanged&&fitOnResize) zoomFit();
+    return sizeChanged;
+  }
+  function restore(data){
+    putImageState(data,true);
+    mctx.clearRect(0,0,cw,ch);
+    cropSelection=null; rectStart=null; cloneSource=null;
+    if(currentTool==='crop') renderOptions();
+    renderOverlay();
+  }
   function undo(){
     if(history.length<=1) return;
     redoStack.push(history.pop());
@@ -519,19 +563,162 @@
     return {x:clamp(cx,0,cw-1), y:clamp(cy,0,ch-1)};
   }
 
+  // ---------- crop helpers ----------
+  function makeCropRect(anchor,pos,ratio){
+    const dx=pos.x-anchor.x, dy=pos.y-anchor.y;
+    let w=Math.abs(dx), h=Math.abs(dy);
+    if(ratio>0){
+      if(h<0.5) h=w/ratio;
+      else if(w<0.5) w=h*ratio;
+      else if(w/h>ratio) w=h*ratio;
+      else h=w/ratio;
+    }
+    const sx=dx<0?-1:1, sy=dy<0?-1:1;
+    const maxW=sx>0?cw-anchor.x:anchor.x;
+    const maxH=sy>0?ch-anchor.y:anchor.y;
+    if(ratio>0){
+      w=Math.min(w,maxW,maxH*ratio);
+      h=w/ratio;
+    }else{
+      w=Math.min(w,maxW); h=Math.min(h,maxH);
+    }
+    return {x:sx>0?anchor.x:anchor.x-w, y:sy>0?anchor.y:anchor.y-h, w, h};
+  }
+  function setCenteredCrop(ratio,width,height){
+    if(!cw) return;
+    let w, h;
+    if(width&&height){
+      w=clamp(Math.round(width),1,cw); h=clamp(Math.round(height),1,ch);
+    }else{
+      w=cw*.9; h=ch*.9;
+      if(ratio>0){
+        if(w/h>ratio) w=h*ratio;
+        else h=w/ratio;
+      }
+    }
+    cropSelection={x:(cw-w)/2,y:(ch-h)/2,w,h};
+    updateCropControls(); renderOverlay();
+  }
+  function cropHandleTolerance(){
+    const r=canvas.getBoundingClientRect();
+    return Math.max(5,12*cw/Math.max(1,r.width));
+  }
+  function getCropHit(pos){
+    if(!cropSelection) return 'new';
+    const s=cropSelection, t=cropHandleTolerance();
+    const corners={nw:[s.x,s.y],ne:[s.x+s.w,s.y],sw:[s.x,s.y+s.h],se:[s.x+s.w,s.y+s.h]};
+    for(const [name,p] of Object.entries(corners)){
+      if(Math.hypot(pos.x-p[0],pos.y-p[1])<=t) return name;
+    }
+    if(pos.x>=s.x&&pos.x<=s.x+s.w&&pos.y>=s.y&&pos.y<=s.y+s.h) return 'move';
+    return 'new';
+  }
+  function updateCropCursor(pos){
+    if(currentTool!=='crop'){ canvasWrap.style.cursor=''; return; }
+    const hit=getCropHit(pos);
+    const cursors={move:'move',nw:'nwse-resize',se:'nwse-resize',ne:'nesw-resize',sw:'nesw-resize',new:'crosshair'};
+    canvasWrap.style.cursor=cursors[hit]||'crosshair';
+  }
+  function startCrop(pos){
+    drawing=true; cropDragMode=getCropHit(pos); cropDragStart={...pos};
+    cropDragOrigin=cropSelection?{...cropSelection}:null;
+    if(cropDragMode==='new') cropSelection={x:pos.x,y:pos.y,w:0,h:0};
+  }
+  function moveCrop(pos){
+    if(cropDragMode==='move'&&cropDragOrigin){
+      const dx=pos.x-cropDragStart.x, dy=pos.y-cropDragStart.y;
+      cropSelection={...cropDragOrigin,
+        x:clamp(cropDragOrigin.x+dx,0,cw-cropDragOrigin.w),
+        y:clamp(cropDragOrigin.y+dy,0,ch-cropDragOrigin.h)};
+    }else if(cropDragMode==='new'){
+      cropSelection=makeCropRect(cropDragStart,pos,cropRatio);
+    }else if(cropDragOrigin){
+      const s=cropDragOrigin;
+      const anchors={nw:{x:s.x+s.w,y:s.y+s.h},ne:{x:s.x,y:s.y+s.h},sw:{x:s.x+s.w,y:s.y},se:{x:s.x,y:s.y}};
+      cropSelection=makeCropRect(anchors[cropDragMode],pos,cropRatio);
+    }
+    updateCropControls(); renderOverlay();
+  }
+  function updateCropControls(){
+    const widthEl=document.getElementById('cropWidth');
+    const heightEl=document.getElementById('cropHeight');
+    const status=document.getElementById('cropStatus');
+    const apply=document.getElementById('applyCrop');
+    if(!widthEl||!heightEl) return;
+    const w=cropSelection?Math.max(1,Math.round(cropSelection.w)):cw;
+    const h=cropSelection?Math.max(1,Math.round(cropSelection.h)):ch;
+    widthEl.value=w||''; heightEl.value=h||'';
+    if(status) status.textContent=cropSelection&&cropSelection.w>=2&&cropSelection.h>=2?`当前选区：${w} × ${h} px`:'请在图片上拖拽框选裁剪区域';
+    if(apply) apply.disabled=!(cropSelection&&cropSelection.w>=2&&cropSelection.h>=2);
+  }
+  function applyCustomCropSize(){
+    if(!cw){ toast('请先载入图片'); return; }
+    const w=parseInt(document.getElementById('cropWidth')?.value,10);
+    const h=parseInt(document.getElementById('cropHeight')?.value,10);
+    if(!Number.isFinite(w)||!Number.isFinite(h)||w<1||h<1){ toast('请输入有效的宽度和高度'); return; }
+    cropRatio=0;
+    const width=Math.min(w,cw), height=Math.min(h,ch);
+    const center=cropSelection?{x:cropSelection.x+cropSelection.w/2,y:cropSelection.y+cropSelection.h/2}:{x:cw/2,y:ch/2};
+    cropSelection={x:clamp(center.x-width/2,0,cw-width),y:clamp(center.y-height/2,0,ch-height),w:width,h:height};
+    renderOptions(); renderOverlay();
+    if(w>cw||h>ch) toast(`选区已限制在原图 ${cw}×${ch} px 内`);
+  }
+  function applyCrop(){
+    if(!cropSelection||cropSelection.w<2||cropSelection.h<2){ toast('请先框选裁剪区域'); return; }
+    const x=clamp(Math.round(cropSelection.x),0,cw-1);
+    const y=clamp(Math.round(cropSelection.y),0,ch-1);
+    const w=Math.max(1,Math.min(cw-x,Math.round(cropSelection.w)));
+    const h=Math.max(1,Math.min(ch-y,Math.round(cropSelection.h)));
+    if(x===0&&y===0&&w===cw&&h===ch){ toast('当前选区与原图相同'); return; }
+    const cropped=ctx.getImageData(x,y,w,h);
+    putImageState(cropped,true);
+    cropSelection=null; cropDragMode=null; cropDragOrigin=null;
+    pushHistory(); renderOptions(); renderOverlay();
+    toast(`裁剪完成：${w} × ${h} px`);
+  }
+
   // ---------- overlay (mask + cursor) ----------
   let cursorPos=null;
   function renderOverlay(){
     octx.clearRect(0,0,cw,ch);
-    const rectMode = currentTool==='rect' || (currentTool==='blur' && blurMode==='rect');
+    const rectMode = currentTool==='rect' || currentTool==='crop' || (currentTool==='blur' && blurMode==='rect');
     // mask
-    octx.drawImage(maskCanvas,0,0);
+    if(currentTool!=='crop') octx.drawImage(maskCanvas,0,0);
     // rect preview
     if(rectMode && rectStart && cursorPos){
       const x=Math.min(rectStart.x,cursorPos.x), y=Math.min(rectStart.y,cursorPos.y);
       const w=Math.abs(cursorPos.x-rectStart.x), h=Math.abs(cursorPos.y-rectStart.y);
       octx.fillStyle='rgba(79,140,255,.25)'; octx.fillRect(x,y,w,h);
       octx.strokeStyle='#4f8cff'; octx.lineWidth=Math.max(1,2*(cw/canvas.getBoundingClientRect().width)); octx.strokeRect(x,y,w,h);
+    }
+    // crop selection
+    if(currentTool==='crop'&&cropSelection&&cropSelection.w>0&&cropSelection.h>0){
+      const s=cropSelection;
+      const scale=cw/Math.max(1,canvas.getBoundingClientRect().width);
+      const right=s.x+s.w, bottom=s.y+s.h;
+      octx.fillStyle='rgba(0,0,0,.55)';
+      octx.fillRect(0,0,cw,s.y); octx.fillRect(0,bottom,cw,ch-bottom);
+      octx.fillRect(0,s.y,s.x,s.h); octx.fillRect(right,s.y,cw-right,s.h);
+      octx.strokeStyle='#fff'; octx.lineWidth=Math.max(1,1.5*scale); octx.setLineDash([]);
+      octx.strokeRect(s.x,s.y,s.w,s.h);
+      octx.strokeStyle='rgba(255,255,255,.55)'; octx.lineWidth=Math.max(1,scale); octx.setLineDash([5*scale,5*scale]);
+      for(let i=1;i<3;i++){
+        octx.beginPath(); octx.moveTo(s.x+s.w*i/3,s.y); octx.lineTo(s.x+s.w*i/3,bottom); octx.stroke();
+        octx.beginPath(); octx.moveTo(s.x,s.y+s.h*i/3); octx.lineTo(right,s.y+s.h*i/3); octx.stroke();
+      }
+      octx.setLineDash([]);
+      const hs=8*scale;
+      octx.fillStyle='#fff'; octx.strokeStyle='#4f8cff'; octx.lineWidth=Math.max(1,scale);
+      [[s.x,s.y],[right,s.y],[s.x,bottom],[right,bottom]].forEach(([x,y])=>{
+        octx.fillRect(x-hs/2,y-hs/2,hs,hs); octx.strokeRect(x-hs/2,y-hs/2,hs,hs);
+      });
+      const label=`${Math.max(1,Math.round(s.w))} × ${Math.max(1,Math.round(s.h))}`;
+      octx.font=`${12*scale}px sans-serif`;
+      const tw=octx.measureText(label).width, pad=5*scale, lh=22*scale;
+      const lx=clamp(s.x+6*scale,0,Math.max(0,cw-tw-pad*2));
+      const ly=s.y+lh<bottom?s.y+4*scale:Math.max(0,s.y-lh);
+      octx.fillStyle='rgba(23,26,33,.88)'; octx.fillRect(lx,ly,tw+pad*2,lh);
+      octx.fillStyle='#fff'; octx.textBaseline='middle'; octx.fillText(label,lx+pad,ly+lh/2);
     }
     // clone source marker
     if(currentTool==='clone' && cloneSource){
@@ -959,6 +1146,7 @@
   // ---------- pointer interaction ----------
   function startStroke(pos,e){
     drawing=true; lastX=pos.x; lastY=pos.y; dirty=null;
+    if(currentTool==='crop'){ startCrop(pos); renderOverlay(); return; }
     if(currentTool==='inpaint'){ paintMask(pos.x,pos.y,pos.x,pos.y); renderOverlay(); return; }
     if(currentTool==='rect'){ rectStart={x:pos.x,y:pos.y}; return; }
     if(currentTool==='blur' && blurMode==='rect'){ rectStart={x:pos.x,y:pos.y}; return; }
@@ -979,6 +1167,7 @@
     stampAt(pos.x,pos.y); flushDirty();
   }
   function moveStroke(pos){
+    if(currentTool==='crop'){ moveCrop(pos); return; }
     if(currentTool==='inpaint'){ paintMask(lastX,lastY,pos.x,pos.y); renderOverlay(); lastX=pos.x;lastY=pos.y; return; }
     if(currentTool==='rect'){ renderOverlay(); return; }
     if(currentTool==='blur' && blurMode==='rect'){ renderOverlay(); return; }
@@ -988,6 +1177,13 @@
   function endStroke(pos){
     if(!drawing){ return; }
     drawing=false;
+    if(currentTool==='crop'){
+      moveCrop(pos);
+      if(cropSelection&&(cropSelection.w<2||cropSelection.h<2)) cropSelection=null;
+      cropDragMode=null; cropDragOrigin=null; cropDragStart=null;
+      updateCropControls(); renderOverlay(); updateCropCursor(pos);
+      return;
+    }
     if(currentTool==='inpaint'){ return; } // wait for 执行修复
     if(currentTool==='rect'){
       const x=Math.min(rectStart.x,pos.x), y=Math.min(rectStart.y,pos.y);
@@ -1021,10 +1217,10 @@
     if(!cw) return;
     const pos=getPos(e); cursorPos=pos;
     if(drawing) moveStroke(pos);
-    else renderOverlay();
+    else{ updateCropCursor(pos); renderOverlay(); }
   });
   window.addEventListener('pointerup',e=>{
-    if(!cw||!drawing && currentTool!=='rect') { if(drawing) endStroke(getPos(e)); return; }
+    if(!cw||!drawing) return;
     endStroke(getPos(e));
   });
   canvasWrap.addEventListener('pointerleave',()=>{ cursorPos=null; if(!drawing) renderOverlay(); });
@@ -1065,7 +1261,35 @@
     solid:()=>`
       <div class="hint">用纯色直接涂抹覆盖水印。</div>
       <div class="field"><label>覆盖颜色</label>
-        <input type="color" value="${opt.solidColor}" data-opt="solidColor"></div>`
+        <input type="color" value="${opt.solidColor}" data-opt="solidColor"></div>`,
+    crop:()=>{
+      const selected=cropSelection&&cropSelection.w>=2&&cropSelection.h>=2;
+      const w=selected?Math.round(cropSelection.w):cw;
+      const h=selected?Math.round(cropSelection.h):ch;
+      const active=r=>Math.abs(cropRatio-r)<.0001?'active':'';
+      return `
+      <div class="hint">在图片上拖拽框选裁剪区域；选区内部可移动，四角可继续调整。</div>
+      <div class="field"><label>常用尺寸</label>
+        <div class="crop-presets">
+          <button type="button" class="seg-btn ${active(0)}" data-crop-ratio="0">自由</button>
+          <button type="button" class="seg-btn ${active(1)}" data-crop-ratio="1">1:1</button>
+          <button type="button" class="seg-btn ${active(4/3)}" data-crop-ratio="${4/3}">4:3</button>
+          <button type="button" class="seg-btn ${active(3/4)}" data-crop-ratio="${3/4}">3:4</button>
+          <button type="button" class="seg-btn ${active(16/9)}" data-crop-ratio="${16/9}">16:9</button>
+          <button type="button" class="seg-btn ${active(9/16)}" data-crop-ratio="${9/16}">9:16</button>
+        </div></div>
+      <div class="field"><label>自定义选区尺寸（像素）</label>
+        <div class="crop-size-row">
+          <input type="number" id="cropWidth" min="1" max="${cw||1}" value="${w||''}" aria-label="裁剪宽度">
+          <span>×</span>
+          <input type="number" id="cropHeight" min="1" max="${ch||1}" value="${h||''}" aria-label="裁剪高度">
+        </div>
+        <button type="button" class="btn ghost" id="setCropSize">设置选区尺寸</button>
+      </div>
+      <div class="crop-status" id="cropStatus">${selected?`当前选区：${w} × ${h} px`:'请在图片上拖拽框选裁剪区域'}</div>
+      <button class="btn primary" id="applyCrop" ${selected?'':'disabled'}>✂️ 应用裁剪</button>
+      <button class="btn ghost" id="clearCrop">取消选区</button>`;
+    }
   };
   function renderOptions(){
     optsEl.innerHTML=toolOptions[currentTool]();
@@ -1086,12 +1310,28 @@
         renderOptions(); renderOverlay();
       });
     });
+    optsEl.querySelectorAll('[data-crop-ratio]').forEach(el=>{
+      el.addEventListener('click',()=>{
+        cropRatio=parseFloat(el.dataset.cropRatio)||0;
+        if(cropRatio>0) setCenteredCrop(cropRatio);
+        renderOptions(); renderOverlay();
+      });
+    });
+    const setCropSize=document.getElementById('setCropSize'); if(setCropSize) setCropSize.onclick=applyCustomCropSize;
+    const applyCropBtn=document.getElementById('applyCrop'); if(applyCropBtn) applyCropBtn.onclick=applyCrop;
+    const clearCrop=document.getElementById('clearCrop'); if(clearCrop) clearCrop.onclick=()=>{ cropSelection=null; updateCropControls(); renderOverlay(); };
+    ['cropWidth','cropHeight'].forEach(id=>{
+      document.getElementById(id)?.addEventListener('keydown',e=>{ if(e.key==='Enter') applyCustomCropSize(); });
+    });
   }
   document.getElementById('tools').addEventListener('click',e=>{
     const btn=e.target.closest('.tool-btn'); if(!btn) return;
     document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
+    if(currentTool==='crop'&&btn.dataset.tool!=='crop') cropSelection=null;
     currentTool=btn.dataset.tool;
+    brushField.style.display=currentTool==='crop'?'none':'flex';
+    canvasWrap.style.cursor=currentTool==='crop'?'crosshair':'';
     if(currentTool!=='inpaint') clearMask();
     if(currentTool!=='clone') cloneSource=null;
     rectStart=null;
@@ -1104,7 +1344,7 @@
   document.getElementById('redoBtn').onclick=redo;
   document.getElementById('resetBtn').onclick=()=>{
     if(!originalData) return;
-    ctx.putImageData(originalData,0,0); clearMask(); pushHistory(); toast('已复位到原图');
+    restore(originalData); pushHistory(); toast('已复位到原图');
   };
   document.getElementById('downloadBtn').onclick=()=>{
     canvas.toBlob(blob=>{
@@ -1121,8 +1361,23 @@
   // compare original (press & hold)
   const compareBtn=document.getElementById('compareBtn');
   let compareSaved=null;
-  function showOriginal(){ if(!originalData) return; compareSaved=ctx.getImageData(0,0,cw,ch); ctx.putImageData(originalData,0,0); }
-  function hideOriginal(){ if(compareSaved){ ctx.putImageData(compareSaved,0,0); compareSaved=null; } }
+  let compareMask=null, compareCropSelection=null;
+  function showOriginal(){
+    if(!originalData||compareSaved) return;
+    compareSaved=ctx.getImageData(0,0,cw,ch);
+    compareMask=mctx.getImageData(0,0,cw,ch);
+    compareCropSelection=cropSelection?{...cropSelection}:null;
+    putImageState(originalData,true); octx.clearRect(0,0,cw,ch);
+  }
+  function hideOriginal(){
+    if(!compareSaved) return;
+    putImageState(compareSaved,true);
+    if(compareMask&&compareMask.width===cw&&compareMask.height===ch) mctx.putImageData(compareMask,0,0);
+    cropSelection=compareCropSelection;
+    compareSaved=compareMask=compareCropSelection=null;
+    if(currentTool==='crop') renderOptions();
+    renderOverlay();
+  }
   compareBtn.addEventListener('pointerdown',e=>{e.preventDefault();showOriginal();});
   compareBtn.addEventListener('pointerup',hideOriginal);
   compareBtn.addEventListener('pointerleave',hideOriginal);
@@ -1143,6 +1398,7 @@
     else if(e.key==='['){ brush=Math.max(4,brush-4); brushRange.value=brush; brushVal.textContent=brush+' px'; renderOverlay(); }
     else if(e.key===']'){ brush=Math.min(160,brush+4); brushRange.value=brush; brushVal.textContent=brush+' px'; renderOverlay(); }
     else if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&currentTool==='inpaint'){ executeInpaint(); }
+    else if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&currentTool==='crop'){ applyCrop(); }
   });
 
   // ---------- help modal ----------
