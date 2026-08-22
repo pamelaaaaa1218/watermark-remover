@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QK1S0Y1B4C"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-QK1S0Y1B4C');
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>去水印工具 · 多功能本地处理</title>
@@ -295,7 +303,7 @@
     </div>
     <div class="modal-body">
       <div class="note">
-        🔒 <b>隐私安全</b>：本工具所有图片处理都在你自己的浏览器里完成，图片<b>不会上传</b>到任何服务器，可放心处理内部素材，断网也能正常使用。
+        🔒 <b>隐私安全</b>：本工具所有图片处理都在你自己的浏览器里完成，图片<b>不会上传</b>到任何服务器，可放心处理内部素材，断网也能正常使用。为了解使用情况，本页仅发送不包含图片内容、文件名或输入数据的访问与功能使用事件。
       </div>
 
       <h3>① 三步上手</h3>
@@ -416,6 +424,9 @@
     toastEl.textContent=msg; toastEl.classList.add('show');
     clearTimeout(toast._t); toast._t=setTimeout(()=>toastEl.classList.remove('show'),2200);
   }
+  function trackEvent(name,params){
+    if(typeof window.gtag==='function') window.gtag('event',name,params||{});
+  }
   function showBusy(t){ busyText.textContent=t||'处理中…'; busy.classList.add('show'); }
   function hideBusy(){ busy.classList.remove('show'); }
   const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
@@ -496,6 +507,7 @@
         if(cropRatio>0) setCenteredCrop(cropRatio);
         renderOptions(); renderOverlay();
       }
+      trackEvent('image_loaded');
       toast(scaled?`图片较大，已缩放至 ${w}×${h} 以保证流畅`:`已载入 ${w}×${h}`);
     };
     img.onerror=()=>toast('图片载入失败，请换一张试试');
@@ -674,6 +686,7 @@
     putImageState(cropped,true);
     cropSelection=null; cropDragMode=null; cropDragOrigin=null;
     pushHistory(); renderOptions(); renderOverlay();
+    trackEvent('crop_applied');
     toast(`裁剪完成：${w} × ${h} px`);
   }
 
@@ -1107,7 +1120,7 @@
       const m=maskArrayFromCanvas();
       const ok=runInpaint(m);
       clearMask();
-      if(ok){ pushHistory(); toast('修复完成'); }
+      if(ok){ pushHistory(); trackEvent('inpaint_applied'); toast('修复完成'); }
       hideBusy();
     },30);
   }
@@ -1118,7 +1131,7 @@
       const xe=Math.min(cw,x+w), ye=Math.min(ch,y+h);
       for(let yy=Math.max(0,y);yy<ye;yy++) for(let xx=Math.max(0,x);xx<xe;xx++) m[yy*cw+xx]=1;
       const ok=runInpaint(m);
-      if(ok){ pushHistory(); toast('修复完成'); }
+      if(ok){ pushHistory(); trackEvent('rect_inpaint_applied'); toast('修复完成'); }
       hideBusy();
     },30);
   }
@@ -1138,7 +1151,7 @@
         }
       }
       ctx.putImageData(img,0,0);
-      pushHistory(); toast('模糊完成');
+      pushHistory(); trackEvent('blur_applied'); toast('模糊完成');
       hideBusy();
     },30);
   }
@@ -1204,6 +1217,10 @@
     }
     // pixel tools: commit
     pushHistory();
+    if(currentTool==='mosaic') trackEvent('mosaic_applied');
+    else if(currentTool==='blur') trackEvent('blur_applied');
+    else if(currentTool==='clone') trackEvent('clone_applied');
+    else if(currentTool==='solid') trackEvent('solid_applied');
     snapshot=working=sourceBuffer=null;
   }
 
@@ -1347,6 +1364,7 @@
     restore(originalData); pushHistory(); toast('已复位到原图');
   };
   document.getElementById('downloadBtn').onclick=()=>{
+    trackEvent('result_downloaded');
     canvas.toBlob(blob=>{
       const a=document.createElement('a');
       a.href=URL.createObjectURL(blob);
