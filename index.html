@@ -143,6 +143,7 @@
   }
   .site-footer b{color:var(--text); font-weight:600;}
   .site-footer .sep{margin:0 8px; opacity:.5;}
+  .site-footer .copyright-notice{display:block; margin-top:2px;}
   kbd{background:var(--panel-2); border:1px solid var(--border); border-bottom-width:2px; border-radius:5px; padding:1px 6px; font-size:11px; font-family:inherit;}
   ::-webkit-scrollbar{width:10px; height:10px;}
   ::-webkit-scrollbar-thumb{background:#2c313c; border-radius:5px;}
@@ -165,6 +166,13 @@
   .modal-body .tool-row .ti{font-size:22px; flex-shrink:0; width:30px; text-align:center;}
   .modal-body .tool-row .tc b{color:var(--text);}
   .modal-body .tool-row .tc{font-size:13px; color:var(--muted); line-height:1.65;}
+  .follow-intro{margin:0 auto 23px; text-align:center; color:var(--muted); font-size:13px; line-height:1.75; white-space:nowrap;}
+  .follow-card{max-width:284px; margin:0 auto; background:var(--panel-2); border:1px solid var(--border); border-radius:13px; padding:19px 16px 17px; text-align:center;}
+  .follow-card h3{display:block; margin:0 0 7px; color:var(--text); font-size:14px;}
+  .follow-card p{margin:0 0 15px; color:var(--muted); font-size:12px; line-height:1.55;}
+  .follow-qr{display:block; width:min(100%,220px); aspect-ratio:1; margin:0 auto; border-radius:11px; object-fit:cover; background:#fff;}
+  .follow-note{text-align:center; color:var(--muted); font-size:11.5px; line-height:1.8; margin:22px 0 0;}
+  #followModal .modal-body{padding:24px 24px 31px;}
   @media (max-width:780px){
     .main{flex-direction:column;}
     .sidebar{width:100%; max-height:46%; border-right:none; border-bottom:1px solid var(--border); padding:14px; gap:14px;}
@@ -180,6 +188,12 @@
     .drop-hint .big{font-size:40px;}
     .site-footer{font-size:10.5px; padding:7px 12px;}
     .site-footer .sep{margin:0 5px;}
+    .follow-intro{margin-bottom:18px; white-space:normal;}
+    .follow-card{padding:14px 11px;}
+    .follow-card h3{font-size:13px;}
+    .follow-card p{font-size:11px; margin-bottom:11px;}
+    .follow-note{margin-top:18px;}
+    #followModal .modal-body{padding:20px 14px 25px;}
   }
   @media (max-width:460px){
     header h1{font-size:15px; letter-spacing:0;}
@@ -289,6 +303,7 @@
 
 <footer class="site-footer">
   本工具由微信公众号「<b>Pamela 的 AI 笔记</b>」开发<span class="sep">·</span>© 2026 版权所有，保留所有权利<span class="sep">·</span>所有图片均在本地处理，不上传服务器
+  <span class="copyright-notice">未经授权，不得复制、修改、镜像或重新发布本工具及其源代码。</span>
 </footer>
 
 <input type="file" id="fileInput" accept="image/*" style="display:none;">
@@ -317,7 +332,7 @@
       <div class="tool-row"><div class="ti">✨</div><div class="tc"><b>智能修复</b>（最常用）—— 用画笔把水印涂红，再点「执行修复」，算法会参考四周像素<b>还原背景</b>。最适合：透明 LOGO、文字水印，且背景比较干净或是渐变/纯色。</div></div>
       <div class="tool-row"><div class="ti">⬚</div><div class="tc"><b>矩形修复</b> —— 直接拖拽框选一块矩形区域，松手自动还原。适合边角的方块台标。</div></div>
       <div class="tool-row"><div class="ti">🎯</div><div class="tc"><b>仿制图章</b> —— 先按住 <kbd>Alt</kbd> 点一下干净区域设为「取样点」（绿色十字），再涂抹水印，会把取样区纹理复制过去。<b>背景复杂（人脸、花纹）时比智能修复更好用。</b></div></div>
-      <div class="tool-row"><div class="ti">🟫</div><div class="tc"><b>马赛克</b> —— 涂抹处变成像素块遮盖。不需要还原、只想盖住时用。</div></div>
+      <div class="tool-row"><div class="ti">🟫</div><div class="tc"><b>马赛克</b> —— 涂抹处变成像素块遮盖。支持<b>「涂抹」</b>逐处处理，也支持<b>「框选」</b>一次覆盖整块区域。</div></div>
       <div class="tool-row"><div class="ti">💧</div><div class="tc"><b>模糊</b> —— 涂抹处柔化遮盖，比马赛克自然。支持两种方式：<b>「涂抹」</b>用画笔逐处糊；<b>「框选」</b>拖拽一个矩形，松手后整块一次性模糊，<b>大片要打码的区域用框选更快</b>。</div></div>
       <div class="tool-row"><div class="ti">🎨</div><div class="tc"><b>纯色涂抹</b> —— 用选定的单一颜色直接盖掉。</div></div>
       <div class="tool-row"><div class="ti">✂️</div><div class="tc"><b>裁剪</b> —— 可选自由、1:1、4:3、3:4、16:9、9:16 常用比例，也可以直接拖拽自定义选区，或输入精确的像素宽高。选区可以移动，并可拖动四角继续调整。</div></div>
@@ -357,6 +372,25 @@
       <p style="color:var(--muted); font-size:12px; margin-top:16px; line-height:1.6;">
         把链接或二维码发给同事，对方在浏览器点开即用；<br>所有图片仍在各自浏览器本地处理，不会上传。
       </p>
+    </div>
+  </div>
+</div>
+
+<!-- 首次完成后的公众号关注引导弹窗 -->
+<div class="modal" id="followModal" role="dialog" aria-modal="true" aria-labelledby="followTitle">
+  <div class="modal-box" style="max-width:430px;">
+    <div class="modal-head">
+      <h2 id="followTitle">🎉 处理完成</h2>
+      <button class="modal-close" id="followClose" title="关闭" aria-label="关闭">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="follow-intro">觉得好用，欢迎关注公众号，获取更多实用 AI 工具和方法。</p>
+      <section class="follow-card">
+        <h3>关注公众号</h3>
+        <p>微信扫码关注「Pamela 的 AI 笔记」</p>
+        <img class="follow-qr" src="wechat-official-account-qr.jpg" alt="Pamela 的 AI 笔记微信公众号二维码">
+      </section>
+      <p class="follow-note">感谢你的关注；图片仍只在你的浏览器本地处理。</p>
     </div>
   </div>
 </div>
@@ -404,6 +438,7 @@
   let cloneOffset=null;          // {dx,dy} active during clone stroke
   // rect tool
   let rectStart=null;
+  let mosaicMode='brush';          // 马赛克工具：'brush' 涂抹 | 'rect' 框选
   let blurMode='brush';            // 模糊工具：'brush' 涂抹 | 'rect' 框选
   // crop tool
   let cropSelection=null;          // {x,y,w,h} in image pixels
@@ -694,7 +729,8 @@
   let cursorPos=null;
   function renderOverlay(){
     octx.clearRect(0,0,cw,ch);
-    const rectMode = currentTool==='rect' || currentTool==='crop' || (currentTool==='blur' && blurMode==='rect');
+    const rectMode = currentTool==='rect' || currentTool==='crop' ||
+      (currentTool==='mosaic' && mosaicMode==='rect') || (currentTool==='blur' && blurMode==='rect');
     // mask
     if(currentTool!=='crop') octx.drawImage(maskCanvas,0,0);
     // rect preview
@@ -1155,6 +1191,20 @@
       hideBusy();
     },30);
   }
+  function executeMosaicRect(x,y,w,h){
+    x=Math.max(0,x); y=Math.max(0,y);
+    const xe=Math.min(cw,x+w), ye=Math.min(ch,y+h);
+    const width=xe-x, height=ye-y;
+    if(width<=0||height<=0) return;
+    showBusy('马赛克处理中…');
+    setTimeout(()=>{
+      const region=ctx.getImageData(x,y,width,height);
+      region.data.set(pixelate(region.data,width,height,opt.mosaicBlock));
+      ctx.putImageData(region,x,y);
+      pushHistory(); trackEvent('mosaic_applied',{mode:'rect'}); toast('马赛克完成');
+      hideBusy();
+    },30);
+  }
 
   // ---------- pointer interaction ----------
   function startStroke(pos,e){
@@ -1162,6 +1212,7 @@
     if(currentTool==='crop'){ startCrop(pos); renderOverlay(); return; }
     if(currentTool==='inpaint'){ paintMask(pos.x,pos.y,pos.x,pos.y); renderOverlay(); return; }
     if(currentTool==='rect'){ rectStart={x:pos.x,y:pos.y}; return; }
+    if(currentTool==='mosaic' && mosaicMode==='rect'){ rectStart={x:pos.x,y:pos.y}; return; }
     if(currentTool==='blur' && blurMode==='rect'){ rectStart={x:pos.x,y:pos.y}; return; }
     if(currentTool==='clone'){
       if(e.altKey || !cloneSource){
@@ -1183,6 +1234,7 @@
     if(currentTool==='crop'){ moveCrop(pos); return; }
     if(currentTool==='inpaint'){ paintMask(lastX,lastY,pos.x,pos.y); renderOverlay(); lastX=pos.x;lastY=pos.y; return; }
     if(currentTool==='rect'){ renderOverlay(); return; }
+    if(currentTool==='mosaic' && mosaicMode==='rect'){ renderOverlay(); return; }
     if(currentTool==='blur' && blurMode==='rect'){ renderOverlay(); return; }
     strokeStamp(lastX,lastY,pos.x,pos.y);
     lastX=pos.x; lastY=pos.y;
@@ -1206,6 +1258,15 @@
       executeRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));
       return;
     }
+    if(currentTool==='mosaic' && mosaicMode==='rect'){
+      if(rectStart){
+        const x=Math.min(rectStart.x,pos.x), y=Math.min(rectStart.y,pos.y);
+        const w=Math.abs(pos.x-rectStart.x), h=Math.abs(pos.y-rectStart.y);
+        rectStart=null; renderOverlay();
+        if(w>=3&&h>=3) executeMosaicRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));
+      }
+      return;
+    }
     if(currentTool==='blur' && blurMode==='rect'){
       if(rectStart){
         const x=Math.min(rectStart.x,pos.x), y=Math.min(rectStart.y,pos.y);
@@ -1217,7 +1278,7 @@
     }
     // pixel tools: commit
     pushHistory();
-    if(currentTool==='mosaic') trackEvent('mosaic_applied');
+    if(currentTool==='mosaic') trackEvent('mosaic_applied',{mode:'brush'});
     else if(currentTool==='blur') trackEvent('blur_applied');
     else if(currentTool==='clone') trackEvent('clone_applied');
     else if(currentTool==='solid') trackEvent('solid_applied');
@@ -1259,7 +1320,14 @@
       <div class="field"><label>修复质量 <span class="val">${opt.inpaintQuality}</span></label>
         <input type="range" min="10" max="160" value="${opt.inpaintQuality}" data-opt="inpaintQuality"></div>`,
     mosaic:()=>`
-      <div class="hint">直接在水印上涂抹，覆盖为像素马赛克。</div>
+      <div class="field"><label>马赛克方式</label>
+        <div class="seg" id="mosaicModeSeg">
+          <button type="button" class="seg-btn ${mosaicMode==='brush'?'active':''}" data-mosaicmode="brush">🖌 涂抹</button>
+          <button type="button" class="seg-btn ${mosaicMode==='rect'?'active':''}" data-mosaicmode="rect">▭ 框选</button>
+        </div></div>
+      <div class="hint">${mosaicMode==='brush'
+        ? '用画笔在水印上涂抹，逐处覆盖为像素马赛克。'
+        : '在图片上拖拽框选一个矩形区域，松手后整块一次性添加马赛克。'}</div>
       <div class="field"><label>马赛克块大小 <span class="val">${opt.mosaicBlock} px</span></label>
         <input type="range" min="4" max="50" value="${opt.mosaicBlock}" data-opt="mosaicBlock"></div>`,
     blur:()=>`
@@ -1320,6 +1388,13 @@
     });
     const ai=document.getElementById('applyInpaint'); if(ai) ai.onclick=executeInpaint;
     const cm=document.getElementById('clearMaskBtn'); if(cm) cm.onclick=clearMask;
+    optsEl.querySelectorAll('[data-mosaicmode]').forEach(el=>{
+      el.addEventListener('click',()=>{
+        mosaicMode=el.dataset.mosaicmode;
+        rectStart=null;
+        renderOptions(); renderOverlay();
+      });
+    });
     optsEl.querySelectorAll('[data-blurmode]').forEach(el=>{
       el.addEventListener('click',()=>{
         blurMode=el.dataset.blurmode;
@@ -1370,6 +1445,7 @@
       a.href=URL.createObjectURL(blob);
       a.download='去水印_'+Date.now()+'.png';
       a.click(); URL.revokeObjectURL(a.href);
+      setTimeout(openFollowPrompt,180);
     },'image/png');
   };
   document.getElementById('uploadBtn').onclick=()=>fileInput.click();
@@ -1437,6 +1513,28 @@
     const u=document.getElementById('shareUrl');
     navigator.clipboard?.writeText(u.value).then(()=>toast('链接已复制')).catch(()=>{ u.select(); document.execCommand('copy'); toast('链接已复制'); });
   };
+
+  // ---------- first-use follow modal ----------
+  const followModal=document.getElementById('followModal');
+  const FOLLOW_PROMPT_KEY='pamela_follow_prompt_last_date_v1';
+  let followPromptShown=false;
+  function openFollowPrompt(){
+    const isLocalPreview=location.protocol==='file:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
+    if(!isLocalPreview&&followPromptShown) return;
+    const now=new Date();
+    const today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+    let lastShown='';
+    try{ lastShown=localStorage.getItem(FOLLOW_PROMPT_KEY)||''; }catch(_){ }
+    if(!isLocalPreview&&lastShown===today) return;
+    if(!isLocalPreview){
+      followPromptShown=true;
+      try{ localStorage.setItem(FOLLOW_PROMPT_KEY,today); }catch(_){ }
+    }
+    followModal.classList.add('show');
+    trackEvent('wechat_follow_prompt_shown',{source:isLocalPreview?'local_preview':'daily_download'});
+  }
+  const closeFollow=()=>followModal.classList.remove('show');
+  document.getElementById('followClose').onclick=closeFollow;
 
   window.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeHelp(); closeShare(); } });
 
