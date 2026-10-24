@@ -137,13 +137,21 @@
   @keyframes spin{to{transform:rotate(360deg);}}
   .footnote{font-size:11px; color:var(--muted); line-height:1.6; margin-top:auto;}
   .site-footer{
-    flex-shrink:0; text-align:center; font-size:11.5px; color:var(--muted);
+    flex-shrink:0; font-size:11.5px; color:var(--muted);
     background:var(--panel); border-top:1px solid var(--border);
-    padding:8px 16px; line-height:1.6;
+    padding:7px 16px; line-height:1.6;
   }
+  .site-footer-inner{max-width:1120px; margin:0 auto; display:flex; align-items:center; justify-content:center; gap:24px;}
+  .site-footer-copy{text-align:center;}
   .site-footer b{color:var(--text); font-weight:600;}
   .site-footer .sep{margin:0 8px; opacity:.5;}
   .site-footer .copyright-notice{display:block; margin-top:2px;}
+  .footer-follow{display:flex; align-items:center; gap:9px; flex-shrink:0; padding:5px 10px 5px 5px; border:1px solid var(--border); border-radius:10px; background:var(--panel-2); color:var(--text); font:inherit; text-align:left; cursor:pointer; transition:border-color .15s,background .15s;}
+  .footer-follow:hover,.footer-follow:focus-visible{border-color:var(--accent); background:#252b38; outline:none;}
+  .footer-follow img{display:block; width:58px; height:58px; border-radius:6px; background:#fff;}
+  .footer-follow strong,.footer-follow small{display:block; white-space:nowrap;}
+  .footer-follow strong{font-size:11.5px; font-weight:600;}
+  .footer-follow small{margin-top:2px; font-size:10.5px; color:var(--muted);}
   kbd{background:var(--panel-2); border:1px solid var(--border); border-bottom-width:2px; border-radius:5px; padding:1px 6px; font-size:11px; font-family:inherit;}
   ::-webkit-scrollbar{width:10px; height:10px;}
   ::-webkit-scrollbar-thumb{background:#2c313c; border-radius:5px;}
@@ -166,6 +174,14 @@
   .modal-body .tool-row .ti{font-size:22px; flex-shrink:0; width:30px; text-align:center;}
   .modal-body .tool-row .tc b{color:var(--text);}
   .modal-body .tool-row .tc{font-size:13px; color:var(--muted); line-height:1.65;}
+  .share-grid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:17px;}
+  .share-qr-card{min-width:0; padding:16px 12px 17px; border:1px solid var(--border); border-radius:12px; background:var(--panel-2);}
+  .share-qr-card h3{display:block; margin:0 0 4px; color:var(--text); font-size:14px;}
+  .share-qr-card p{margin:0 0 12px; color:var(--muted); font-size:12px;}
+  .share-qr-card img{display:block; max-width:100%; margin:0 auto;}
+  .share-link-row{display:flex; gap:8px; margin-top:17px;}
+  .share-link-row input{flex:1; min-width:0; background:var(--panel-2); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 11px; font-size:12px;}
+  .share-link-row .btn{width:auto; padding:9px 14px;}
   .follow-intro{margin:0 auto 23px; text-align:center; color:var(--muted); font-size:13px; line-height:1.75; white-space:nowrap;}
   .follow-card{max-width:284px; margin:0 auto; background:var(--panel-2); border:1px solid var(--border); border-radius:13px; padding:19px 16px 17px; text-align:center;}
   .follow-card h3{display:block; margin:0 0 7px; color:var(--text); font-size:14px;}
@@ -186,8 +202,13 @@
     .stage{padding:14px;}
     .drop-hint{padding:42px 26px;}
     .drop-hint .big{font-size:40px;}
-    .site-footer{font-size:10.5px; padding:7px 12px;}
+    .site-footer{font-size:10.5px; padding:6px 10px;}
+    .site-footer-inner{gap:10px;}
+    .site-footer-copy{flex:1;}
     .site-footer .sep{margin:0 5px;}
+    .footer-follow{padding:3px;}
+    .footer-follow img{width:48px; height:48px;}
+    .footer-follow span{display:none;}
     .follow-intro{margin-bottom:18px; white-space:normal;}
     .follow-card{padding:14px 11px;}
     .follow-card h3{font-size:13px;}
@@ -201,6 +222,8 @@
     header .btn{font-size:12.5px; padding:10px 4px; gap:4px;}
     .tool-btn{padding:10px 4px;}
     .tool-btn .ic{font-size:19px;}
+    .share-grid{grid-template-columns:1fr;}
+    .share-qr-card{padding:13px 12px;}
   }
 </style>
 </head>
@@ -302,8 +325,16 @@
 </div>
 
 <footer class="site-footer">
-  本工具由微信公众号「<b>Pamela 的 AI 笔记</b>」开发<span class="sep">·</span>© 2026 版权所有，保留所有权利<span class="sep">·</span>所有图片均在本地处理，不上传服务器
-  <span class="copyright-notice">未经授权，不得复制、修改、镜像或重新发布本工具及其源代码。</span>
+  <div class="site-footer-inner">
+    <div class="site-footer-copy">
+      本工具由微信公众号「<b>Pamela 的 AI 笔记</b>」开发<span class="sep">·</span>© 2026 版权所有，保留所有权利<span class="sep">·</span>所有图片均在本地处理，不上传服务器
+      <span class="copyright-notice">未经授权，不得复制、修改、镜像或重新发布本工具及其源代码。</span>
+    </div>
+    <button type="button" class="footer-follow" id="footerFollowBtn" aria-label="查看 Pamela 的 AI 笔记公众号二维码">
+      <img src="wechat-official-account-qr.jpg" alt="">
+      <span><strong>关注公众号</strong><small>扫码 · 点击放大</small></span>
+    </button>
+  </div>
 </footer>
 
 <input type="file" id="fileInput" accept="image/*" style="display:none;">
@@ -356,21 +387,32 @@
 
 <!-- 分享弹窗 -->
 <div class="modal" id="shareModal">
-  <div class="modal-box" style="max-width:400px;">
+  <div class="modal-box" style="max-width:590px;">
     <div class="modal-head">
       <h2>📱 分享此工具</h2>
       <button class="modal-close" id="shareClose" title="关闭">×</button>
     </div>
     <div class="modal-body" style="text-align:center;">
-      <p style="color:var(--muted); font-size:13px; margin-top:0;">手机扫码即可打开使用，无需下载</p>
+      <p style="color:var(--muted); font-size:13px; margin-top:0;">分享工具，也欢迎关注「Pamela 的 AI 笔记」</p>
+      <div class="share-grid">
+        <section class="share-qr-card">
+          <h3>分享网页</h3>
+          <p>扫码打开工具 · 无需下载</p>
       <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkwAAAJMAQMAAAAyqmuAAAAABlBMVEUPERX///9uyDSXAAADIklEQVR42u2dW4rDMAxFzWzA+9+ld+ChrSNdKS7zYfWjzDGllMQ5H4WL3k6bVWs0UKBAgQIFChQoUKBAgQL1dahmq0/7ftwdj9++rc+w7fr9RP20sgUK1P9BubhUZa6+l06fGnyJcfsIGgQF6lyDy7pdn2X7XuprS5L6lD6CBkGBKtTgXZJuB2WhQVCgPqVBsX1mDV2bKk80CArUZ+LBFfpdknQLOIKtJB4EBapMg7YkJPzjI4+gQVCgDjWYAr2lyh6zMfH7VubgbwcF6kiDIcq7btmV5Yha2cI2YAdBgSryRVViHhv2qbWJUKZPNhENggJ1HA+GdOjY5G3W3Tm1eQZfFBSoGjs4pStmZJ8zFCnsW8NJNAgK1Ek8qOLS/jQL+lq+FfrZ0CAoUBV20KM/8U5z0bCFer3Ilr8dFKgDO5hK8DouMfY78UVBgSrPybg1jDNN5nZ6Z5qkaLCDoEDV2sFQlBfdeTw4Q4IUDYICVZWTWRZwVyhM5cJNzwwaBAXqxBfVcQmJAXVwyTxP65whHgQFqlKDMd+S0zKxKG9GEA2CAlXpi9rF4a3aeXiw56QNGgQFqsAONqk1XPGg+6J2JQ75ur+KBkGBOrSD0owdPFIpBbZ7s+jAFwUFqs4Ozlh6iPnS5IK6uWSOHhSoonjQ06H3SfnWtF0tH7mGHQQFqkqDu3Y12+bFQW0opU8GFKgqDd4O8vUNOs3UwyAh8SAoUFUa1BKhOZ8pWWruqKdosIOgQNXlZPKJviLMIMk45IsdBAWqRoM6HZ+Kgz2MFm7CRjQICtShBvvcDyu1cJSTxoO+EzsIClSVBkcuVeRjK1IJg7woKFCFGhxyXqj2w4zspmp+hngQFKgSDe5fqCRThOqsplohdhAUqJKcjArKbukZv9sqIeeqgQJVnJO5lSTSKH06Wo0aPShQVRpc/qefD3OZQt2Z3l9PPAgK1Gc0aIrTiQkTXcrVEA+CAlWsQbs13gwM7t5GgQZBgSqLB9OxFXKSYXrTRKNGDwpUlQZt9fAiCTeIWi6UGV7yoqBAlWiwYA1QoECBAgUKFChQoECBAvVFqF+i+WrujCiJgAAAAABJRU5ErkJggg==" alt="二维码" style="width:220px; height:220px; background:#fff; padding:10px; border-radius:12px; image-rendering:pixelated;">
-      <div style="display:flex; gap:8px; margin-top:18px;">
+        </section>
+        <section class="share-qr-card">
+          <h3>关注公众号</h3>
+          <p>微信扫码关注 · 获取更多实用工具</p>
+          <img src="wechat-official-account-qr.jpg" alt="Pamela 的 AI 笔记微信公众号二维码" width="220" height="220" style="background:#fff; padding:10px; border-radius:12px;">
+        </section>
+      </div>
+      <div class="share-link-row">
         <input id="shareUrl" readonly value="https://pamelaaaaa1218.github.io/watermark-remover/"
-          style="flex:1; background:var(--panel-2); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 11px; font-size:12px;">
-        <button class="btn" id="copyUrl" style="width:auto; padding:9px 14px;">复制</button>
+          aria-label="工具网址">
+        <button class="btn" id="copyUrl">复制链接</button>
       </div>
       <p style="color:var(--muted); font-size:12px; margin-top:16px; line-height:1.6;">
-        把链接或二维码发给同事，对方在浏览器点开即用；<br>所有图片仍在各自浏览器本地处理，不会上传。
+        图片仍只在各自的浏览器本地处理，不会上传。
       </p>
     </div>
   </div>
@@ -384,7 +426,7 @@
       <button class="modal-close" id="followClose" title="关闭" aria-label="关闭">×</button>
     </div>
     <div class="modal-body">
-      <p class="follow-intro">觉得好用，欢迎关注公众号，获取更多实用 AI 工具和方法。</p>
+      <p class="follow-intro" id="followIntro">觉得好用，欢迎关注公众号，获取更多实用 AI 工具和方法。</p>
       <section class="follow-card">
         <h3>关注公众号</h3>
         <p>微信扫码关注「Pamela 的 AI 笔记」</p>
@@ -1516,8 +1558,19 @@
 
   // ---------- first-use follow modal ----------
   const followModal=document.getElementById('followModal');
+  const followTitle=document.getElementById('followTitle');
+  const followIntro=document.getElementById('followIntro');
   const FOLLOW_PROMPT_KEY='pamela_follow_prompt_last_date_v1';
   let followPromptShown=false;
+  function showFollowModal(source){
+    const fromFooter=source==='footer';
+    followTitle.textContent=fromFooter?'关注公众号':'🎉 处理完成';
+    followIntro.textContent=fromFooter
+      ? '微信扫码关注「Pamela 的 AI 笔记」，获取更多实用 AI 工具和方法。'
+      : '觉得好用，欢迎关注公众号，获取更多实用 AI 工具和方法。';
+    followModal.classList.add('show');
+    trackEvent('wechat_follow_prompt_shown',{source});
+  }
   function openFollowPrompt(){
     const isLocalPreview=location.protocol==='file:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
     if(!isLocalPreview&&followPromptShown) return;
@@ -1530,11 +1583,11 @@
       followPromptShown=true;
       try{ localStorage.setItem(FOLLOW_PROMPT_KEY,today); }catch(_){ }
     }
-    followModal.classList.add('show');
-    trackEvent('wechat_follow_prompt_shown',{source:isLocalPreview?'local_preview':'daily_download'});
+    showFollowModal(isLocalPreview?'local_preview':'daily_download');
   }
   const closeFollow=()=>followModal.classList.remove('show');
   document.getElementById('followClose').onclick=closeFollow;
+  document.getElementById('footerFollowBtn').onclick=()=>showFollowModal('footer');
 
   window.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeHelp(); closeShare(); } });
 
