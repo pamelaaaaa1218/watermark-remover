@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+<!-- ADSENSE: 通过后把 Google 给的广告代码贴这里 -->
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-QK1S0Y1B4C"></script>
 <script>
@@ -12,6 +13,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>去水印工具 · 多功能本地处理</title>
+<meta name="description" content="在浏览器本地编辑图片，支持智能修复、仿制图章、马赛克、模糊与裁剪。图片无需上传，处理后可导出 PNG。">
+<link rel="canonical" href="https://wmfree.com/">
 <style>
   :root{
     --bg:#0f1115; --panel:#171a21; --panel-2:#1e222b; --border:#2a2f3a;
@@ -146,6 +149,10 @@
   .site-footer b{color:var(--text); font-weight:600;}
   .site-footer .sep{margin:0 8px; opacity:.5;}
   .site-footer .copyright-notice{display:block; margin-top:2px;}
+  .footer-links{display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:0 14px; margin:4px 0;}
+  .footer-links a{color:var(--muted); text-decoration:none; padding:3px 0; white-space:nowrap;}
+  .footer-links a:hover{color:var(--text); text-decoration:underline; text-underline-offset:3px;}
+  .footer-links a:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:2px;}
   .footer-follow{display:flex; align-items:center; gap:9px; flex-shrink:0; padding:5px 10px 5px 5px; border:1px solid var(--border); border-radius:10px; background:var(--panel-2); color:var(--text); font:inherit; text-align:left; cursor:pointer; transition:border-color .15s,background .15s;}
   .footer-follow:hover,.footer-follow:focus-visible{border-color:var(--accent); background:#252b38; outline:none;}
   .footer-follow img{display:block; width:58px; height:58px; border-radius:6px; background:#fff;}
@@ -328,6 +335,13 @@
   <div class="site-footer-inner">
     <div class="site-footer-copy">
       本工具由微信公众号「<b>Pamela 的 AI 笔记</b>」开发<span class="sep">·</span>© 2026 版权所有，保留所有权利<span class="sep">·</span>所有图片均在本地处理，不上传服务器
+      <nav class="footer-links" aria-label="网站信息">
+        <a href="faq.html">常见问题</a>
+        <a href="about.html">关于</a>
+        <a href="contact.html">联系</a>
+        <a href="privacy.html">隐私政策</a>
+        <a href="terms.html">使用条款</a>
+      </nav>
       <span class="copyright-notice">未经授权，不得复制、修改、镜像或重新发布本工具及其源代码。</span>
     </div>
     <button type="button" class="footer-follow" id="footerFollowBtn" aria-label="查看 Pamela 的 AI 笔记公众号二维码">
@@ -407,7 +421,7 @@
         </section>
       </div>
       <div class="share-link-row">
-        <input id="shareUrl" readonly value="https://pamelaaaaa1218.github.io/watermark-remover/"
+        <input id="shareUrl" readonly value="https://wmfree.com/"
           aria-label="工具网址">
         <button class="btn" id="copyUrl">复制链接</button>
       </div>

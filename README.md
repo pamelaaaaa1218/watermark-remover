@@ -2,7 +2,7 @@
 
 一个**纯前端、零依赖**的多功能图片去水印网页工具。所有处理都在浏览器本地完成，**图片不会上传到任何服务器**，断网也能使用，适合处理内部素材。
 
-🌐 **在线使用**：https://pamelaaaaa1218.github.io/watermark-remover/
+🌐 **在线使用**：https://wmfree.com/
 
 📱 **手机扫码打开**：
 
@@ -31,15 +31,15 @@
 
 ## 🚀 使用方法
 
-### 方式一：直接打开文件
-下载 `index.html`，**双击用浏览器打开即可使用**，无需安装、无需联网。
+访问 https://wmfree.com/，选择、拖入或粘贴图片，编辑后下载 PNG。
 
-### 方式二：在线访问
-访问 GitHub Pages 链接（部署后在仓库 Settings → Pages 查看），点开即用。
+独立下载版不再随仓库分发。网站说明与政策见 [常见问题](https://wmfree.com/faq.html)、[关于本站](https://wmfree.com/about.html)、[联系我们](https://wmfree.com/contact.html)、[隐私政策](https://wmfree.com/privacy.html) 和 [使用条款](https://wmfree.com/terms.html)。
 
 ## 🔒 隐私说明
 
 本工具是 100% 客户端应用，不含任何后端。你导入的图片只存在于当前浏览器内存中，关闭页面即清除，**全程不会发送到网络**。
+
+图片处理不会上传图片；网页本身使用 Google Analytics 统计访问与功能操作，详情见[隐私政策](https://wmfree.com/privacy.html)。
 
 ## 项目更新与AI实践
 
