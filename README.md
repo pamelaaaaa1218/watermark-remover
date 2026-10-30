@@ -2,7 +2,7 @@
 
 一个**纯前端、零依赖**的多功能图片去水印网页工具。所有处理都在浏览器本地完成，**图片不会上传到任何服务器**，断网也能使用，适合处理内部素材。
 
-🌐 **在线使用**：https://wmfree.com/
+🌐 **在线使用**：[wmfree.com](https://wmfree.com/)
 
 📱 **手机扫码打开**：
 
@@ -31,7 +31,7 @@
 
 ## 🚀 使用方法
 
-访问 https://wmfree.com/，选择、拖入或粘贴图片，编辑后下载 PNG。
+访问 [wmfree.com](https://wmfree.com/)，选择、拖入或粘贴图片，编辑后下载 PNG。
 
 独立下载版不再随仓库分发。网站说明与政策见 [常见问题](https://wmfree.com/faq.html)、[关于本站](https://wmfree.com/about.html)、[联系我们](https://wmfree.com/contact.html)、[隐私政策](https://wmfree.com/privacy.html) 和 [使用条款](https://wmfree.com/terms.html)。
 
