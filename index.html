@@ -345,7 +345,7 @@
       <span class="copyright-notice">未经授权，不得复制、修改、镜像或重新发布本工具及其源代码。</span>
     </div>
     <button type="button" class="footer-follow" id="footerFollowBtn" aria-label="查看 Pamela 的 AI 笔记公众号二维码">
-      <img src="wechat-official-account-qr.jpg" alt="">
+      <img src="assets/wechat-follow-qr.jpg" alt="">
       <span><strong>关注公众号</strong><small>扫码 · 点击放大</small></span>
     </button>
   </div>
@@ -417,7 +417,7 @@
         <section class="share-qr-card">
           <h3>关注公众号</h3>
           <p>微信扫码关注 · 获取更多实用工具</p>
-          <img src="wechat-official-account-qr.jpg" alt="Pamela 的 AI 笔记微信公众号二维码" width="220" height="220" style="background:#fff; padding:10px; border-radius:12px;">
+          <img src="assets/wechat-follow-qr.jpg" alt="Pamela 的 AI 笔记微信公众号二维码" width="220" height="220" style="background:#fff; padding:10px; border-radius:12px;">
         </section>
       </div>
       <div class="share-link-row">
@@ -444,7 +444,7 @@
       <section class="follow-card">
         <h3>关注公众号</h3>
         <p>微信扫码关注「Pamela 的 AI 笔记」</p>
-        <img class="follow-qr" src="wechat-official-account-qr.jpg" alt="Pamela 的 AI 笔记微信公众号二维码">
+        <img class="follow-qr" src="assets/wechat-follow-qr.jpg" alt="Pamela 的 AI 笔记微信公众号二维码">
       </section>
       <p class="follow-note">感谢你的关注；图片仍只在你的浏览器本地处理。</p>
     </div>
@@ -1583,7 +1583,7 @@
       ? '微信扫码关注「Pamela 的 AI 笔记」，获取更多实用 AI 工具和方法。'
       : '觉得好用，欢迎关注公众号，获取更多实用 AI 工具和方法。';
     followModal.classList.add('show');
-    trackEvent('wechat_follow_prompt_shown',{source});
+    trackEvent('wechat_follow_prompt_shown',{prompt_source:source});
   }
   function openFollowPrompt(){
     const isLocalPreview=location.protocol==='file:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
